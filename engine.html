@@ -1,0 +1,253 @@
+001"}
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Money Game Engine</title>
+
+<style>
+body{
+margin:0;
+background:#111;
+color:white;
+font-family:Arial;
+text-align:center;
+}
+
+#menu{
+position:absolute;
+top:50%;
+left:50%;
+transform:translate(-50%,-50%);
+}
+
+canvas{
+background:#222;
+display:block;
+margin:auto;
+}
+
+#hud{
+position:absolute;
+top:10px;
+left:10px;
+display:none;
+}
+
+#gameover{
+position:absolute;
+top:50%;
+left:50%;
+transform:translate(-50%,-50%);
+display:none;
+}
+</style>
+</head>
+
+<body>
+
+<div id="menu">
+<h1>Money Game Engine</h1>
+<input id="nameInput" placeholder="Enter name">
+<br><br>
+<button id="startBtn">Start Game</button>
+</div>
+
+<div id="hud">
+<span id="score">Score: 0</span>
+<span id="coins">Coins: 0</span>
+</div>
+
+<canvas id="game"></canvas>
+
+<div id="gameover">
+<h2>Game Over</h2>
+<button onclick="restart()">Restart</button>
+</div>
+
+<script>
+
+const canvas=document.getElementById("game")
+const ctx=canvas.getContext("2d")
+
+canvas.width=800
+canvas.height=600
+
+let state="menu"
+
+let player={x:400,y:300,size:25,speed:4}
+let enemies=[]
+let coins=[]
+
+let score=0
+let coinCount=0
+
+const keys={}
+
+document.addEventListener("keydown",e=>{
+if(document.activeElement.tagName==="INPUT")return
+keys[e.key]=true
+})
+
+document.addEventListener("keyup",e=>{
+keys[e.key]=false
+})
+
+document.getElementById("startBtn").onclick=()=>{
+
+document.getElementById("menu").style.display="none"
+document.getElementById("hud").style.display="block"
+
+state="play"
+
+spawnEnemy()
+spawnCoin()
+
+loop()
+
+}
+
+function spawnEnemy(){
+
+setInterval(()=>{
+
+if(state!=="play")return
+
+enemies.push({
+x:Math.random()*760,
+y:Math.random()*560,
+size:25,
+speed:2
+})
+
+},1500)
+
+}
+
+function spawnCoin(){
+
+setInterval(()=>{
+
+if(state!=="play")return
+
+coins.push({
+x:Math.random()*760,
+y:Math.random()*560,
+size:15
+})
+
+},2000)
+
+}
+
+function update(){
+
+if(state!=="play")return
+
+if(keys["w"]||keys["ArrowUp"])player.y-=player.speed
+if(keys["s"]||keys["ArrowDown"])player.y+=player.speed
+if(keys["a"]||keys["ArrowLeft"])player.x-=player.speed
+if(keys["d"]||keys["ArrowRight"])player.x+=player.speed
+
+score++
+
+enemies.forEach(e=>{
+
+if(e.x<player.x)e.x+=e.speed
+if(e.x>player.x)e.x-=e.speed
+if(e.y<player.y)e.y+=e.speed
+if(e.y>player.y)e.y-=e.speed
+
+})
+
+checkCollisions()
+
+document.getElementById("score").innerText="Score: "+score
+document.getElementById("coins").innerText="Coins: "+coinCount
+
+}
+
+function checkCollisions(){
+
+enemies.forEach(e=>{
+if(collide(player,e)){
+gameOver()
+}
+})
+
+coins.forEach((c,i)=>{
+if(collide(player,c)){
+coins.splice(i,1)
+coinCount++
+}
+})
+
+}
+
+function collide(a,b){
+
+return(
+a.x < b.x + b.size &&
+a.x + a.size > b.x &&
+a.y < b.y + b.size &&
+a.y + a.size > b.y
+)
+
+}
+
+function gameOver(){
+
+state="gameover"
+document.getElementById("gameover").style.display="block"
+
+}
+
+function restart(){
+
+player.x=400
+player.y=300
+
+score=0
+coinCount=0
+
+enemies=[]
+coins=[]
+
+document.getElementById("gameover").style.display="none"
+
+state="play"
+
+}
+
+function draw(){
+
+ctx.clearRect(0,0,canvas.width,canvas.height)
+
+ctx.fillStyle="cyan"
+ctx.fillRect(player.x,player.y,player.size,player.size)
+
+ctx.fillStyle="red"
+enemies.forEach(e=>{
+ctx.fillRect(e.x,e.y,e.size,e.size)
+})
+
+ctx.fillStyle="yellow"
+coins.forEach(c=>{
+ctx.fillRect(c.x,c.y,c.size,c.size)
+})
+
+}
+
+function loop(){
+
+update()
+draw()
+
+requestAnimationFrame(loop)
+
+}
+
+</script>
+
+</body>
+</  
