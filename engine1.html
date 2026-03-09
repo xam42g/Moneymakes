@@ -1,254 +1,455 @@
 <!DOCTYPE html>
-<html>
+<html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>Coin Dodge</title>
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coin Dodge V2</title>
 <style>
+  * { box-sizing: border-box; }
 
-body{
-margin:0;
-background:#111;
-color:white;
-font-family:Arial;
-text-align:center;
-}
+  body{
+    margin:0;
+    background:#111;
+    color:white;
+    font-family:Arial,sans-serif;
+    text-align:center;
+    overflow:hidden;
+  }
 
-#menu{
-position:absolute;
-top:50%;
-left:50%;
-transform:translate(-50%,-50%);
-}
+  #gameWrap{
+    position:relative;
+    width:100vw;
+    height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
 
-canvas{
-background:#222;
-display:block;
-margin:auto;
-}
+  canvas{
+    background:#222;
+    border:2px solid #333;
+    max-width:100vw;
+    max-height:100vh;
+    display:block;
+  }
 
-#hud{
-position:absolute;
-top:10px;
-left:10px;
-display:none;
-}
+  #menu,
+  #gameover,
+  #pauseOverlay{
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%);
+    background:rgba(0,0,0,0.82);
+    padding:24px;
+    border:2px solid #444;
+    border-radius:16px;
+    min-width:280px;
+    z-index:20;
+  }
 
-#gameover{
-position:absolute;
-top:50%;
-left:50%;
-transform:translate(-50%,-50%);
-display:none;
-}
+  #pauseOverlay,
+  #gameover,
+  #hud{
+    display:none;
+  }
 
+  #hud{
+    position:absolute;
+    top:12px;
+    left:12px;
+    right:12px;
+    z-index:10;
+    display:none;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+    pointer-events:none;
+  }
+
+  .hudBox{
+    background:rgba(0,0,0,0.65);
+    padding:10px 14px;
+    border-radius:12px;
+    border:1px solid #333;
+    font-size:18px;
+  }
+
+  h1,h2,p{
+    margin:0 0 14px 0;
+  }
+
+  input, button{
+    font-size:18px;
+    padding:12px 14px;
+    border-radius:10px;
+    border:none;
+  }
+
+  input{
+    width:100%;
+    margin-bottom:12px;
+  }
+
+  button{
+    background:#19d3da;
+    color:#000;
+    font-weight:bold;
+    cursor:pointer;
+    width:100%;
+  }
+
+  .small{
+    margin-top:12px;
+    color:#bbb;
+    font-size:14px;
+  }
 </style>
 </head>
-
 <body>
 
-<div id="menu">
-<h1>Coin Dodge</h1>
-<input id="nameInput" placeholder="Name">
-<br><br>
-<button id="startBtn">Start</button>
-</div>
+<div id="gameWrap">
+  <div id="menu">
+    <h1>Coin Dodge V2</h1>
+    <input id="nameInput" type="text" maxlength="16" placeholder="Name eingeben">
+    <button id="startBtn">Start</button>
+    <p class="small">Steuerung: WASD / Pfeile · Pause: P · Restart: R</p>
+  </div>
 
-<div id="hud">
-<span id="score">Score: 0</span>
-<span id="coins">Coins: 0</span>
-</div>
+  <div id="hud">
+    <div class="hudBox" id="hudName">Name: Player</div>
+    <div class="hudBox" id="hudScore">Score: 0</div>
+    <div class="hudBox" id="hudCoins">Coins: 0</div>
+    <div class="hudBox" id="hudStatus">Status: Running</div>
+  </div>
 
-<canvas id="game"></canvas>
+  <div id="pauseOverlay">
+    <h2>Pausiert</h2>
+    <p>P drücken zum Fortsetzen</p>
+  </div>
 
-<div id="gameover">
-<h2>Game Over</h2>
-<button onclick="restart()">Restart</button>
+  <div id="gameover">
+    <h2>Game Over</h2>
+    <p id="finalScore">Score: 0</p>
+    <p id="finalCoins">Coins: 0</p>
+    <button id="restartBtn">Nochmal spielen</button>
+  </div>
+
+  <canvas id="game" width="900" height="600"></canvas>
 </div>
 
 <script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
-const canvas=document.getElementById("game")
-const ctx=canvas.getContext("2d")
+const menuEl = document.getElementById("menu");
+const hudEl = document.getElementById("hud");
+const pauseEl = document.getElementById("pauseOverlay");
+const gameOverEl = document.getElementById("gameover");
+const startBtn = document.getElementById("startBtn");
+const restartBtn = document.getElementById("restartBtn");
+const nameInput = document.getElementById("nameInput");
 
-canvas.width=800
-canvas.height=600
+const hudName = document.getElementById("hudName");
+const hudScore = document.getElementById("hudScore");
+const hudCoins = document.getElementById("hudCoins");
+const hudStatus = document.getElementById("hudStatus");
+const finalScore = document.getElementById("finalScore");
+const finalCoins = document.getElementById("finalCoins");
 
-let state="menu"
+const GAME = {
+  width: 900,
+  height: 600,
+  enemySpawnEvery: 1.35,
+  coinSpawnEvery: 1.8,
+  scorePerSecond: 20,
+  maxEnemies: 20,
+  maxCoins: 10
+};
 
-let player={x:400,y:300,size:25,speed:4}
-let enemies=[]
-let coins=[]
+const keys = {};
+let lastTime = 0;
+let loopStarted = false;
 
-let score=0
-let coinCount=0
+let state = "menu"; // menu | play | pause | gameover
 
-const keys={}
+let playerName = "Player";
+let score = 0;
+let coinCount = 0;
+let enemySpawnTimer = 0;
+let coinSpawnTimer = 0;
 
-document.addEventListener("keydown",e=>{
-if(document.activeElement.tagName==="INPUT")return
-keys[e.key]=true
-})
+let player;
+let enemies = [];
+let coins = [];
 
-document.addEventListener("keyup",e=>{
-keys[e.key]=false
-})
+function resetRun() {
+  player = {
+    x: GAME.width / 2 - 14,
+    y: GAME.height / 2 - 14,
+    size: 28,
+    speed: 260
+  };
 
-document.getElementById("startBtn").onclick=()=>{
-
-document.getElementById("menu").style.display="none"
-document.getElementById("hud").style.display="block"
-
-state="play"
-
-spawnEnemy()
-spawnCoin()
-
-loop()
-
+  enemies = [];
+  coins = [];
+  score = 0;
+  coinCount = 0;
+  enemySpawnTimer = 0;
+  coinSpawnTimer = 0;
 }
 
-function spawnEnemy(){
+function startGame() {
+  playerName = nameInput.value.trim() || "Player";
+  hudName.textContent = "Name: " + playerName;
 
-setInterval(()=>{
+  resetRun();
 
-if(state!=="play")return
+  state = "play";
+  menuEl.style.display = "none";
+  gameOverEl.style.display = "none";
+  pauseEl.style.display = "none";
+  hudEl.style.display = "flex";
+  hudStatus.textContent = "Status: Running";
 
-enemies.push({
-x:Math.random()*760,
-y:Math.random()*560,
-size:25,
-speed:2
-})
-
-},1500)
-
+  if (!loopStarted) {
+    loopStarted = true;
+    requestAnimationFrame(loop);
+  }
 }
 
-function spawnCoin(){
-
-setInterval(()=>{
-
-if(state!=="play")return
-
-coins.push({
-x:Math.random()*760,
-y:Math.random()*560,
-size:15
-})
-
-},2000)
-
+function restartGame() {
+  resetRun();
+  state = "play";
+  gameOverEl.style.display = "none";
+  pauseEl.style.display = "none";
+  hudEl.style.display = "flex";
+  hudStatus.textContent = "Status: Running";
 }
 
-function update(){
-
-if(state!=="play")return
-
-if(keys["w"]||keys["ArrowUp"])player.y-=player.speed
-if(keys["s"]||keys["ArrowDown"])player.y+=player.speed
-if(keys["a"]||keys["ArrowLeft"])player.x-=player.speed
-if(keys["d"]||keys["ArrowRight"])player.x+=player.speed
-
-score++
-
-enemies.forEach(e=>{
-
-if(e.x<player.x)e.x+=e.speed
-if(e.x>player.x)e.x-=e.speed
-if(e.y<player.y)e.y+=e.speed
-if(e.y>player.y)e.y-=e.speed
-
-})
-
-checkCollisions()
-
-document.getElementById("score").innerText="Score: "+score
-document.getElementById("coins").innerText="Coins: "+coinCount
-
+function togglePause() {
+  if (state === "play") {
+    state = "pause";
+    pauseEl.style.display = "block";
+    hudStatus.textContent = "Status: Pause";
+  } else if (state === "pause") {
+    state = "play";
+    pauseEl.style.display = "none";
+    hudStatus.textContent = "Status: Running";
+  }
 }
 
-function checkCollisions(){
-
-enemies.forEach(e=>{
-if(collide(player,e)){
-gameOver()
-}
-})
-
-coins.forEach((c,i)=>{
-if(collide(player,c)){
-coins.splice(i,1)
-coinCount++
-}
-})
-
+function gameOver() {
+  state = "gameover";
+  finalScore.textContent = "Score: " + Math.floor(score);
+  finalCoins.textContent = "Coins: " + coinCount;
+  gameOverEl.style.display = "block";
+  pauseEl.style.display = "none";
+  hudStatus.textContent = "Status: Game Over";
 }
 
-function collide(a,b){
-
-return(
-a.x < b.x + b.size &&
-a.x + a.size > b.x &&
-a.y < b.y + b.size &&
-a.y + a.size > b.y
-)
-
+function clampPlayer() {
+  if (player.x < 0) player.x = 0;
+  if (player.y < 0) player.y = 0;
+  if (player.x + player.size > GAME.width) player.x = GAME.width - player.size;
+  if (player.y + player.size > GAME.height) player.y = GAME.height - player.size;
 }
 
-function gameOver(){
+function spawnEnemy() {
+  if (enemies.length >= GAME.maxEnemies) return;
 
-state="gameover"
-document.getElementById("gameover").style.display="block"
+  const side = Math.floor(Math.random() * 4);
+  let x = 0;
+  let y = 0;
+  const size = 28;
+  const speed = 80 + Math.random() * 70;
 
+  if (side === 0) {
+    x = Math.random() * (GAME.width - size);
+    y = -size;
+  } else if (side === 1) {
+    x = GAME.width + size;
+    y = Math.random() * (GAME.height - size);
+  } else if (side === 2) {
+    x = Math.random() * (GAME.width - size);
+    y = GAME.height + size;
+  } else {
+    x = -size;
+    y = Math.random() * (GAME.height - size);
+  }
+
+  enemies.push({ x, y, size, speed });
 }
 
-function restart(){
+function spawnCoin() {
+  if (coins.length >= GAME.maxCoins) return;
 
-player.x=400
-player.y=300
-
-score=0
-coinCount=0
-
-enemies=[]
-coins=[]
-
-document.getElementById("gameover").style.display="none"
-
-state="play"
-
+  const size = 16;
+  coins.push({
+    x: Math.random() * (GAME.width - size),
+    y: Math.random() * (GAME.height - size),
+    size
+  });
 }
 
-function draw(){
-
-ctx.clearRect(0,0,canvas.width,canvas.height)
-
-ctx.fillStyle="cyan"
-ctx.fillRect(player.x,player.y,player.size,player.size)
-
-ctx.fillStyle="red"
-enemies.forEach(e=>{
-ctx.fillRect(e.x,e.y,e.size,e.size)
-})
-
-ctx.fillStyle="yellow"
-coins.forEach(c=>{
-ctx.fillRect(c.x,c.y,c.size,c.size)
-})
-
+function collide(a, b) {
+  return (
+    a.x < b.x + b.size &&
+    a.x + a.size > b.x &&
+    a.y < b.y + b.size &&
+    a.y + a.size > b.y
+  );
 }
 
-function loop(){
+function update(dt) {
+  if (state !== "play") return;
 
-update()
-draw()
+  let dx = 0;
+  let dy = 0;
 
-requestAnimationFrame(loop)
+  if (keys["w"] || keys["ArrowUp"]) dy -= 1;
+  if (keys["s"] || keys["ArrowDown"]) dy += 1;
+  if (keys["a"] || keys["ArrowLeft"]) dx -= 1;
+  if (keys["d"] || keys["ArrowRight"]) dx += 1;
 
+  if (dx !== 0 || dy !== 0) {
+    const len = Math.hypot(dx, dy) || 1;
+    dx /= len;
+    dy /= len;
+    player.x += dx * player.speed * dt;
+    player.y += dy * player.speed * dt;
+  }
+
+  clampPlayer();
+
+  score += GAME.scorePerSecond * dt;
+
+  enemySpawnTimer += dt;
+  coinSpawnTimer += dt;
+
+  if (enemySpawnTimer >= GAME.enemySpawnEvery) {
+    enemySpawnTimer = 0;
+    spawnEnemy();
+  }
+
+  if (coinSpawnTimer >= GAME.coinSpawnEvery) {
+    coinSpawnTimer = 0;
+    spawnCoin();
+  }
+
+  for (const enemy of enemies) {
+    const vx = player.x - enemy.x;
+    const vy = player.y - enemy.y;
+    const len = Math.hypot(vx, vy) || 1;
+    enemy.x += (vx / len) * enemy.speed * dt;
+    enemy.y += (vy / len) * enemy.speed * dt;
+  }
+
+  for (const enemy of enemies) {
+    if (collide(player, enemy)) {
+      gameOver();
+      return;
+    }
+  }
+
+  for (let i = coins.length - 1; i >= 0; i--) {
+    if (collide(player, coins[i])) {
+      coins.splice(i, 1);
+      coinCount += 1;
+      score += 50;
+    }
+  }
+
+  hudScore.textContent = "Score: " + Math.floor(score);
+  hudCoins.textContent = "Coins: " + coinCount;
 }
 
+function drawGrid() {
+  ctx.strokeStyle = "rgba(255,255,255,0.04)";
+  ctx.lineWidth = 1;
+
+  for (let x = 0; x <= GAME.width; x += 50) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, GAME.height);
+    ctx.stroke();
+  }
+
+  for (let y = 0; y <= GAME.height; y += 50) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(GAME.width, y);
+    ctx.stroke();
+  }
+}
+
+function draw() {
+  ctx.clearRect(0, 0, GAME.width, GAME.height);
+
+  ctx.fillStyle = "#1f1f1f";
+  ctx.fillRect(0, 0, GAME.width, GAME.height);
+
+  drawGrid();
+
+  ctx.fillStyle = "#19d3da";
+  ctx.fillRect(player.x, player.y, player.size, player.size);
+
+  ctx.fillStyle = "#ffe600";
+  for (const coin of coins) {
+    ctx.fillRect(coin.x, coin.y, coin.size, coin.size);
+  }
+
+  ctx.fillStyle = "#ff2d2d";
+  for (const enemy of enemies) {
+    ctx.fillRect(enemy.x, enemy.y, enemy.size, enemy.size);
+  }
+}
+
+function loop(timestamp) {
+  const dt = Math.min((timestamp - lastTime) / 1000 || 0, 0.033);
+  lastTime = timestamp;
+
+  update(dt);
+  draw();
+
+  requestAnimationFrame(loop);
+}
+
+document.addEventListener("keydown", (e) => {
+  const tag = document.activeElement ? document.activeElement.tagName : "";
+  if (tag === "INPUT" && e.code !== "Enter") return;
+
+  if (e.code === "KeyP") {
+    if (state === "play" || state === "pause") {
+      togglePause();
+    }
+    return;
+  }
+
+  if (e.code === "KeyR") {
+    if (state === "play" || state === "pause" || state === "gameover") {
+      restartGame();
+    }
+    return;
+  }
+
+  if (e.code === "Enter" && state === "menu") {
+    startGame();
+    return;
+  }
+
+  keys[e.key] = true;
+});
+
+document.addEventListener("keyup", (e) => {
+  keys[e.key] = false;
+});
+
+startBtn.addEventListener("click", startGame);
+restartBtn.addEventListener("click", restartGame);
+
+resetRun();
+draw();
 </script>
-
 </body>
 </html>
