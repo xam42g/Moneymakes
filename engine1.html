@@ -1,455 +1,598 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Coin Dodge V2</title>
-<style>
-  * { box-sizing: border-box; }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arena Dodge</title>
+  <style>
+    * { box-sizing: border-box; }
 
-  body{
-    margin:0;
-    background:#111;
-    color:white;
-    font-family:Arial,sans-serif;
-    text-align:center;
-    overflow:hidden;
-  }
+    :root{
+      --bg:#0b1020;
+      --panel:rgba(10,14,28,.88);
+      --line:rgba(255,255,255,.08);
+      --text:#eef4ff;
+      --muted:#9eb0d4;
+      --player:#2ee6ff;
+      --enemy:#ff4b6e;
+      --coin:#ffd84f;
+      --block:#2b355a;
+      --block2:#3a4675;
+    }
 
-  #gameWrap{
-    position:relative;
-    width:100vw;
-    height:100vh;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-  }
+    body{
+      margin:0;
+      background:radial-gradient(circle at top, #192445 0%, #0e1428 45%, #080c18 100%);
+      color:var(--text);
+      font-family:Arial,sans-serif;
+      overflow:hidden;
+    }
 
-  canvas{
-    background:#222;
-    border:2px solid #333;
-    max-width:100vw;
-    max-height:100vh;
-    display:block;
-  }
+    #wrap{
+      position:relative;
+      width:100vw;
+      height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:10px;
+    }
 
-  #menu,
-  #gameover,
-  #pauseOverlay{
-    position:absolute;
-    left:50%;
-    top:50%;
-    transform:translate(-50%,-50%);
-    background:rgba(0,0,0,0.82);
-    padding:24px;
-    border:2px solid #444;
-    border-radius:16px;
-    min-width:280px;
-    z-index:20;
-  }
+    canvas{
+      display:block;
+      width:min(100vw - 20px, 1000px);
+      height:auto;
+      max-height:calc(100vh - 20px);
+      background:linear-gradient(180deg, #131a31 0%, #0d1224 100%);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:18px;
+      box-shadow:0 10px 40px rgba(0,0,0,.35), inset 0 0 40px rgba(255,255,255,.03);
+    }
 
-  #pauseOverlay,
-  #gameover,
-  #hud{
-    display:none;
-  }
+    #menu,
+    #gameover{
+      position:absolute;
+      left:50%;
+      top:50%;
+      transform:translate(-50%,-50%);
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:18px;
+      padding:22px;
+      width:min(92vw, 360px);
+      text-align:center;
+      z-index:20;
+      box-shadow:0 16px 50px rgba(0,0,0,.4);
+    }
 
-  #hud{
-    position:absolute;
-    top:12px;
-    left:12px;
-    right:12px;
-    z-index:10;
-    display:none;
-    justify-content:space-between;
-    gap:12px;
-    flex-wrap:wrap;
-    pointer-events:none;
-  }
+    #gameover{ display:none; }
 
-  .hudBox{
-    background:rgba(0,0,0,0.65);
-    padding:10px 14px;
-    border-radius:12px;
-    border:1px solid #333;
-    font-size:18px;
-  }
+    h1,h2,p{
+      margin:0 0 12px 0;
+    }
 
-  h1,h2,p{
-    margin:0 0 14px 0;
-  }
+    h1{
+      font-size:34px;
+      letter-spacing:.5px;
+    }
 
-  input, button{
-    font-size:18px;
-    padding:12px 14px;
-    border-radius:10px;
-    border:none;
-  }
+    .muted{
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.45;
+    }
 
-  input{
-    width:100%;
-    margin-bottom:12px;
-  }
+    input, button{
+      width:100%;
+      border:none;
+      border-radius:12px;
+      padding:13px 14px;
+      font-size:18px;
+    }
 
-  button{
-    background:#19d3da;
-    color:#000;
-    font-weight:bold;
-    cursor:pointer;
-    width:100%;
-  }
+    input{
+      margin:8px 0 12px 0;
+      background:#f5f8ff;
+      color:#111;
+    }
 
-  .small{
-    margin-top:12px;
-    color:#bbb;
-    font-size:14px;
-  }
-</style>
+    button{
+      background:linear-gradient(180deg,#43f0ff 0%,#16cddd 100%);
+      color:#041018;
+      font-weight:700;
+      cursor:pointer;
+    }
+
+    #hud{
+      position:absolute;
+      top:12px;
+      left:12px;
+      right:12px;
+      display:none;
+      gap:10px;
+      flex-wrap:wrap;
+      z-index:10;
+      pointer-events:none;
+    }
+
+    .hudBox{
+      background:rgba(8,12,22,.78);
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:10px 12px;
+      min-width:110px;
+      color:var(--text);
+      box-shadow:0 6px 18px rgba(0,0,0,.2);
+    }
+  </style>
 </head>
 <body>
+  <div id="wrap">
+    <div id="menu">
+      <h1>Arena Dodge</h1>
+      <input id="nameInput" type="text" maxlength="16" placeholder="Name" />
+      <button id="startBtn">Start</button>
+      <p class="muted">WASD / Pfeile · P = Pause · R = Restart</p>
+    </div>
 
-<div id="gameWrap">
-  <div id="menu">
-    <h1>Coin Dodge V2</h1>
-    <input id="nameInput" type="text" maxlength="16" placeholder="Name eingeben">
-    <button id="startBtn">Start</button>
-    <p class="small">Steuerung: WASD / Pfeile · Pause: P · Restart: R</p>
+    <div id="hud">
+      <div class="hudBox" id="hudName">Name: Player</div>
+      <div class="hudBox" id="hudScore">Score: 0</div>
+      <div class="hudBox" id="hudCoins">Coins: 0</div>
+      <div class="hudBox" id="hudLives">Lives: 3</div>
+    </div>
+
+    <canvas id="game" width="1000" height="620"></canvas>
+
+    <div id="gameover">
+      <h2>Game Over</h2>
+      <p id="finalScore">Score: 0</p>
+      <p id="finalCoins">Coins: 0</p>
+      <button id="restartBtn">Nochmal</button>
+    </div>
   </div>
 
-  <div id="hud">
-    <div class="hudBox" id="hudName">Name: Player</div>
-    <div class="hudBox" id="hudScore">Score: 0</div>
-    <div class="hudBox" id="hudCoins">Coins: 0</div>
-    <div class="hudBox" id="hudStatus">Status: Running</div>
-  </div>
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
 
-  <div id="pauseOverlay">
-    <h2>Pausiert</h2>
-    <p>P drücken zum Fortsetzen</p>
-  </div>
+    const menuEl = document.getElementById("menu");
+    const gameOverEl = document.getElementById("gameover");
+    const hudEl = document.getElementById("hud");
+    const nameInput = document.getElementById("nameInput");
+    const startBtn = document.getElementById("startBtn");
+    const restartBtn = document.getElementById("restartBtn");
 
-  <div id="gameover">
-    <h2>Game Over</h2>
-    <p id="finalScore">Score: 0</p>
-    <p id="finalCoins">Coins: 0</p>
-    <button id="restartBtn">Nochmal spielen</button>
-  </div>
+    const hudName = document.getElementById("hudName");
+    const hudScore = document.getElementById("hudScore");
+    const hudCoins = document.getElementById("hudCoins");
+    const hudLives = document.getElementById("hudLives");
+    const finalScore = document.getElementById("finalScore");
+    const finalCoins = document.getElementById("finalCoins");
 
-  <canvas id="game" width="900" height="600"></canvas>
-</div>
+    const GAME = {
+      w: 1000,
+      h: 620
+    };
 
-<script>
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
+    const keys = {};
+    let loopStarted = false;
+    let lastTime = 0;
+    let state = "menu";
+    let playerName = "Player";
 
-const menuEl = document.getElementById("menu");
-const hudEl = document.getElementById("hud");
-const pauseEl = document.getElementById("pauseOverlay");
-const gameOverEl = document.getElementById("gameover");
-const startBtn = document.getElementById("startBtn");
-const restartBtn = document.getElementById("restartBtn");
-const nameInput = document.getElementById("nameInput");
+    let score = 0;
+    let coinCount = 0;
+    let player;
+    let enemies = [];
+    let coins = [];
+    let lives = 3;
+    let enemyTimer = 0;
+    let coinTimer = 0;
+    let flash = 0;
 
-const hudName = document.getElementById("hudName");
-const hudScore = document.getElementById("hudScore");
-const hudCoins = document.getElementById("hudCoins");
-const hudStatus = document.getElementById("hudStatus");
-const finalScore = document.getElementById("finalScore");
-const finalCoins = document.getElementById("finalCoins");
+    const blocks = [
+      { x: 160, y: 120, w: 180, h: 34 },
+      { x: 450, y: 92,  w: 36,  h: 170 },
+      { x: 660, y: 150, w: 170, h: 34 },
+      { x: 240, y: 300, w: 36,  h: 180 },
+      { x: 400, y: 420, w: 240, h: 34 },
+      { x: 760, y: 320, w: 36,  h: 160 }
+    ];
 
-const GAME = {
-  width: 900,
-  height: 600,
-  enemySpawnEvery: 1.35,
-  coinSpawnEvery: 1.8,
-  scorePerSecond: 20,
-  maxEnemies: 20,
-  maxCoins: 10
-};
-
-const keys = {};
-let lastTime = 0;
-let loopStarted = false;
-
-let state = "menu"; // menu | play | pause | gameover
-
-let playerName = "Player";
-let score = 0;
-let coinCount = 0;
-let enemySpawnTimer = 0;
-let coinSpawnTimer = 0;
-
-let player;
-let enemies = [];
-let coins = [];
-
-function resetRun() {
-  player = {
-    x: GAME.width / 2 - 14,
-    y: GAME.height / 2 - 14,
-    size: 28,
-    speed: 260
-  };
-
-  enemies = [];
-  coins = [];
-  score = 0;
-  coinCount = 0;
-  enemySpawnTimer = 0;
-  coinSpawnTimer = 0;
-}
-
-function startGame() {
-  playerName = nameInput.value.trim() || "Player";
-  hudName.textContent = "Name: " + playerName;
-
-  resetRun();
-
-  state = "play";
-  menuEl.style.display = "none";
-  gameOverEl.style.display = "none";
-  pauseEl.style.display = "none";
-  hudEl.style.display = "flex";
-  hudStatus.textContent = "Status: Running";
-
-  if (!loopStarted) {
-    loopStarted = true;
-    requestAnimationFrame(loop);
-  }
-}
-
-function restartGame() {
-  resetRun();
-  state = "play";
-  gameOverEl.style.display = "none";
-  pauseEl.style.display = "none";
-  hudEl.style.display = "flex";
-  hudStatus.textContent = "Status: Running";
-}
-
-function togglePause() {
-  if (state === "play") {
-    state = "pause";
-    pauseEl.style.display = "block";
-    hudStatus.textContent = "Status: Pause";
-  } else if (state === "pause") {
-    state = "play";
-    pauseEl.style.display = "none";
-    hudStatus.textContent = "Status: Running";
-  }
-}
-
-function gameOver() {
-  state = "gameover";
-  finalScore.textContent = "Score: " + Math.floor(score);
-  finalCoins.textContent = "Coins: " + coinCount;
-  gameOverEl.style.display = "block";
-  pauseEl.style.display = "none";
-  hudStatus.textContent = "Status: Game Over";
-}
-
-function clampPlayer() {
-  if (player.x < 0) player.x = 0;
-  if (player.y < 0) player.y = 0;
-  if (player.x + player.size > GAME.width) player.x = GAME.width - player.size;
-  if (player.y + player.size > GAME.height) player.y = GAME.height - player.size;
-}
-
-function spawnEnemy() {
-  if (enemies.length >= GAME.maxEnemies) return;
-
-  const side = Math.floor(Math.random() * 4);
-  let x = 0;
-  let y = 0;
-  const size = 28;
-  const speed = 80 + Math.random() * 70;
-
-  if (side === 0) {
-    x = Math.random() * (GAME.width - size);
-    y = -size;
-  } else if (side === 1) {
-    x = GAME.width + size;
-    y = Math.random() * (GAME.height - size);
-  } else if (side === 2) {
-    x = Math.random() * (GAME.width - size);
-    y = GAME.height + size;
-  } else {
-    x = -size;
-    y = Math.random() * (GAME.height - size);
-  }
-
-  enemies.push({ x, y, size, speed });
-}
-
-function spawnCoin() {
-  if (coins.length >= GAME.maxCoins) return;
-
-  const size = 16;
-  coins.push({
-    x: Math.random() * (GAME.width - size),
-    y: Math.random() * (GAME.height - size),
-    size
-  });
-}
-
-function collide(a, b) {
-  return (
-    a.x < b.x + b.size &&
-    a.x + a.size > b.x &&
-    a.y < b.y + b.size &&
-    a.y + a.size > b.y
-  );
-}
-
-function update(dt) {
-  if (state !== "play") return;
-
-  let dx = 0;
-  let dy = 0;
-
-  if (keys["w"] || keys["ArrowUp"]) dy -= 1;
-  if (keys["s"] || keys["ArrowDown"]) dy += 1;
-  if (keys["a"] || keys["ArrowLeft"]) dx -= 1;
-  if (keys["d"] || keys["ArrowRight"]) dx += 1;
-
-  if (dx !== 0 || dy !== 0) {
-    const len = Math.hypot(dx, dy) || 1;
-    dx /= len;
-    dy /= len;
-    player.x += dx * player.speed * dt;
-    player.y += dy * player.speed * dt;
-  }
-
-  clampPlayer();
-
-  score += GAME.scorePerSecond * dt;
-
-  enemySpawnTimer += dt;
-  coinSpawnTimer += dt;
-
-  if (enemySpawnTimer >= GAME.enemySpawnEvery) {
-    enemySpawnTimer = 0;
-    spawnEnemy();
-  }
-
-  if (coinSpawnTimer >= GAME.coinSpawnEvery) {
-    coinSpawnTimer = 0;
-    spawnCoin();
-  }
-
-  for (const enemy of enemies) {
-    const vx = player.x - enemy.x;
-    const vy = player.y - enemy.y;
-    const len = Math.hypot(vx, vy) || 1;
-    enemy.x += (vx / len) * enemy.speed * dt;
-    enemy.y += (vy / len) * enemy.speed * dt;
-  }
-
-  for (const enemy of enemies) {
-    if (collide(player, enemy)) {
-      gameOver();
-      return;
+    function rectsOverlap(a, b) {
+      return (
+        a.x < b.x + b.w &&
+        a.x + a.w > b.x &&
+        a.y < b.y + b.h &&
+        a.y + a.h > b.y
+      );
     }
-  }
 
-  for (let i = coins.length - 1; i >= 0; i--) {
-    if (collide(player, coins[i])) {
-      coins.splice(i, 1);
-      coinCount += 1;
-      score += 50;
+    function circleRectOverlap(c, r) {
+      const closestX = Math.max(r.x, Math.min(c.x, r.x + r.w));
+      const closestY = Math.max(r.y, Math.min(c.y, r.y + r.h));
+      const dx = c.x - closestX;
+      const dy = c.y - closestY;
+      return dx * dx + dy * dy < c.r * c.r;
     }
-  }
 
-  hudScore.textContent = "Score: " + Math.floor(score);
-  hudCoins.textContent = "Coins: " + coinCount;
-}
-
-function drawGrid() {
-  ctx.strokeStyle = "rgba(255,255,255,0.04)";
-  ctx.lineWidth = 1;
-
-  for (let x = 0; x <= GAME.width; x += 50) {
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, GAME.height);
-    ctx.stroke();
-  }
-
-  for (let y = 0; y <= GAME.height; y += 50) {
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(GAME.width, y);
-    ctx.stroke();
-  }
-}
-
-function draw() {
-  ctx.clearRect(0, 0, GAME.width, GAME.height);
-
-  ctx.fillStyle = "#1f1f1f";
-  ctx.fillRect(0, 0, GAME.width, GAME.height);
-
-  drawGrid();
-
-  ctx.fillStyle = "#19d3da";
-  ctx.fillRect(player.x, player.y, player.size, player.size);
-
-  ctx.fillStyle = "#ffe600";
-  for (const coin of coins) {
-    ctx.fillRect(coin.x, coin.y, coin.size, coin.size);
-  }
-
-  ctx.fillStyle = "#ff2d2d";
-  for (const enemy of enemies) {
-    ctx.fillRect(enemy.x, enemy.y, enemy.size, enemy.size);
-  }
-}
-
-function loop(timestamp) {
-  const dt = Math.min((timestamp - lastTime) / 1000 || 0, 0.033);
-  lastTime = timestamp;
-
-  update(dt);
-  draw();
-
-  requestAnimationFrame(loop);
-}
-
-document.addEventListener("keydown", (e) => {
-  const tag = document.activeElement ? document.activeElement.tagName : "";
-  if (tag === "INPUT" && e.code !== "Enter") return;
-
-  if (e.code === "KeyP") {
-    if (state === "play" || state === "pause") {
-      togglePause();
+    function circleHit(a, b) {
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      const rr = a.r + b.r;
+      return dx * dx + dy * dy < rr * rr;
     }
-    return;
-  }
 
-  if (e.code === "KeyR") {
-    if (state === "play" || state === "pause" || state === "gameover") {
-      restartGame();
+    function randomFreeCircle(radius) {
+      for (let tries = 0; tries < 500; tries++) {
+        const x = radius + Math.random() * (GAME.w - radius * 2);
+        const y = radius + Math.random() * (GAME.h - radius * 2);
+
+        const probe = { x, y, r: radius };
+        let blocked = false;
+
+        for (const b of blocks) {
+          if (circleRectOverlap(probe, b)) {
+            blocked = true;
+            break;
+          }
+        }
+
+        if (!blocked) return { x, y };
+      }
+
+      return { x: 60, y: 60 };
     }
-    return;
-  }
 
-  if (e.code === "Enter" && state === "menu") {
-    startGame();
-    return;
-  }
+    function resetRun() {
+      const start = randomFreeCircle(16);
 
-  keys[e.key] = true;
-});
+      player = {
+        x: start.x,
+        y: start.y,
+        r: 16,
+        speed: 280,
+        invuln: 0
+      };
 
-document.addEventListener("keyup", (e) => {
-  keys[e.key] = false;
-});
+      enemies = [];
+      coins = [];
+      score = 0;
+      coinCount = 0;
+      lives = 3;
+      enemyTimer = 0;
+      coinTimer = 0;
+      flash = 0;
 
-startBtn.addEventListener("click", startGame);
-restartBtn.addEventListener("click", restartGame);
+      for (let i = 0; i < 4; i++) spawnCoin();
+      for (let i = 0; i < 3; i++) spawnEnemy();
 
-resetRun();
-draw();
-</script>
+      updateHud();
+    }
+
+    function updateHud() {
+      hudName.textContent = "Name: " + playerName;
+      hudScore.textContent = "Score: " + Math.floor(score);
+      hudCoins.textContent = "Coins: " + coinCount;
+      hudLives.textContent = "Lives: " + lives;
+    }
+
+    function startGame() {
+      playerName = nameInput.value.trim() || "Player";
+      resetRun();
+      state = "play";
+      menuEl.style.display = "none";
+      gameOverEl.style.display = "none";
+      hudEl.style.display = "flex";
+
+      if (!loopStarted) {
+        loopStarted = true;
+        requestAnimationFrame(loop);
+      }
+    }
+
+    function restartGame() {
+      resetRun();
+      state = "play";
+      gameOverEl.style.display = "none";
+      hudEl.style.display = "flex";
+    }
+
+    function gameOver() {
+      state = "gameover";
+      finalScore.textContent = "Score: " + Math.floor(score);
+      finalCoins.textContent = "Coins: " + coinCount;
+      gameOverEl.style.display = "block";
+    }
+
+    function spawnEnemy() {
+      const r = 14 + Math.random() * 6;
+      const pos = randomFreeCircle(r + 8);
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 130 + Math.random() * 80;
+
+      enemies.push({
+        x: pos.x,
+        y: pos.y,
+        r,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed
+      });
+    }
+
+    function spawnCoin() {
+      if (coins.length >= 10) return;
+      const pos = randomFreeCircle(10);
+      coins.push({
+        x: pos.x,
+        y: pos.y,
+        r: 9
+      });
+    }
+
+    function movePlayerAxis(dx, dy) {
+      if (dx !== 0) {
+        const next = { x: player.x + dx, y: player.y, r: player.r };
+        let blocked = false;
+
+        if (next.x - next.r < 0 || next.x + next.r > GAME.w) blocked = true;
+        for (const b of blocks) {
+          if (circleRectOverlap(next, b)) {
+            blocked = true;
+            break;
+          }
+        }
+        if (!blocked) player.x = next.x;
+      }
+
+      if (dy !== 0) {
+        const next = { x: player.x, y: player.y + dy, r: player.r };
+        let blocked = false;
+
+        if (next.y - next.r < 0 || next.y + next.r > GAME.h) blocked = true;
+        for (const b of blocks) {
+          if (circleRectOverlap(next, b)) {
+            blocked = true;
+            break;
+          }
+        }
+        if (!blocked) player.y = next.y;
+      }
+    }
+
+    function updateEnemy(enemy, dt) {
+      let nextX = enemy.x + enemy.vx * dt;
+      let nextY = enemy.y + enemy.vy * dt;
+
+      if (nextX - enemy.r < 0 || nextX + enemy.r > GAME.w) {
+        enemy.vx *= -1;
+        nextX = enemy.x + enemy.vx * dt;
+      }
+
+      const probeX = { x: nextX, y: enemy.y, r: enemy.r };
+      for (const b of blocks) {
+        if (circleRectOverlap(probeX, b)) {
+          enemy.vx *= -1;
+          nextX = enemy.x + enemy.vx * dt;
+          break;
+        }
+      }
+
+      if (nextY - enemy.r < 0 || nextY + enemy.r > GAME.h) {
+        enemy.vy *= -1;
+        nextY = enemy.y + enemy.vy * dt;
+      }
+
+      const probeY = { x: nextX, y: nextY, r: enemy.r };
+      for (const b of blocks) {
+        if (circleRectOverlap(probeY, b)) {
+          enemy.vy *= -1;
+          nextY = enemy.y + enemy.vy * dt;
+          break;
+        }
+      }
+
+      enemy.x = nextX;
+      enemy.y = nextY;
+    }
+
+    function update(dt) {
+      if (state !== "play") return;
+
+      if (flash > 0) flash -= dt;
+      if (player.invuln > 0) player.invuln -= dt;
+
+      let dx = 0;
+      let dy = 0;
+
+      if (keys["w"] || keys["ArrowUp"]) dy -= 1;
+      if (keys["s"] || keys["ArrowDown"]) dy += 1;
+      if (keys["a"] || keys["ArrowLeft"]) dx -= 1;
+      if (keys["d"] || keys["ArrowRight"]) dx += 1;
+
+      const len = Math.hypot(dx, dy) || 1;
+      dx = (dx / len) * player.speed * dt;
+      dy = (dy / len) * player.speed * dt;
+
+      movePlayerAxis(dx, dy);
+
+      enemyTimer += dt;
+      coinTimer += dt;
+      score += 16 * dt;
+
+      if (enemyTimer >= 2.1) {
+        enemyTimer = 0;
+        if (enemies.length < 10) spawnEnemy();
+      }
+
+      if (coinTimer >= 1.6) {
+        coinTimer = 0;
+        spawnCoin();
+      }
+
+      for (const enemy of enemies) {
+        updateEnemy(enemy, dt);
+
+        if (circleHit(player, enemy) && player.invuln <= 0) {
+          lives -= 1;
+          player.invuln = 1.0;
+          flash = 0.18;
+          updateHud();
+
+          if (lives <= 0) {
+            gameOver();
+            return;
+          }
+        }
+      }
+
+      for (let i = coins.length - 1; i >= 0; i--) {
+        if (circleHit(player, coins[i])) {
+          coins.splice(i, 1);
+          coinCount += 1;
+          score += 100;
+          updateHud();
+        }
+      }
+
+      updateHud();
+    }
+
+    function drawBackground() {
+      ctx.fillStyle = "#10172d";
+      ctx.fillRect(0, 0, GAME.w, GAME.h);
+
+      ctx.strokeStyle = "rgba(255,255,255,.04)";
+      ctx.lineWidth = 1;
+
+      for (let x = 0; x <= GAME.w; x += 40) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, GAME.h);
+        ctx.stroke();
+      }
+
+      for (let y = 0; y <= GAME.h; y += 40) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(GAME.w, y);
+        ctx.stroke();
+      }
+    }
+
+    function drawBlocks() {
+      for (const b of blocks) {
+        const grad = ctx.createLinearGradient(b.x, b.y, b.x + b.w, b.y + b.h);
+        grad.addColorStop(0, "#2d3760");
+        grad.addColorStop(1, "#465487");
+        ctx.fillStyle = grad;
+        ctx.fillRect(b.x, b.y, b.w, b.h);
+
+        ctx.strokeStyle = "rgba(255,255,255,.08)";
+        ctx.strokeRect(b.x + 0.5, b.y + 0.5, b.w - 1, b.h - 1);
+      }
+    }
+
+    function drawCoins() {
+      for (const c of coins) {
+        ctx.beginPath();
+        ctx.fillStyle = "rgba(255,216,79,.18)";
+        ctx.arc(c.x, c.y, c.r + 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.fillStyle = "#ffd84f";
+        ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function drawEnemies() {
+      for (const e of enemies) {
+        ctx.beginPath();
+        ctx.fillStyle = "rgba(255,75,110,.18)";
+        ctx.arc(e.x, e.y, e.r + 7, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.fillStyle = "#ff4b6e";
+        ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function drawPlayer() {
+      ctx.beginPath();
+      ctx.fillStyle = player.invuln > 0 && Math.floor(player.invuln * 12) % 2 === 0
+        ? "#7ff4ff"
+        : "#2ee6ff";
+      ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.fillStyle = "rgba(46,230,255,.18)";
+      ctx.arc(player.x, player.y, player.r + 10, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function draw() {
+      drawBackground();
+      drawBlocks();
+      drawCoins();
+      drawEnemies();
+      drawPlayer();
+
+      if (flash > 0) {
+        ctx.fillStyle = "rgba(255,70,90,.16)";
+        ctx.fillRect(0, 0, GAME.w, GAME.h);
+      }
+    }
+
+    function loop(ts) {
+      const dt = Math.min(((ts - lastTime) / 1000) || 0, 0.033);
+      lastTime = ts;
+
+      update(dt);
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    document.addEventListener("keydown", (e) => {
+      const tag = document.activeElement ? document.activeElement.tagName : "";
+      if (tag === "INPUT" && e.code !== "Enter") return;
+
+      if (e.code === "Enter" && state === "menu") {
+        startGame();
+        return;
+      }
+
+      if (e.code === "KeyR" && state !== "menu") {
+        restartGame();
+        return;
+      }
+
+      if (e.code === "KeyP") {
+        if (state === "play") {
+          state = "pause";
+        } else if (state === "pause") {
+          state = "play";
+        }
+        return;
+      }
+
+      keys[e.key] = true;
+    });
+
+    document.addEventListener("keyup", (e) => {
+      keys[e.key] = false;
+    });
+
+    startBtn.addEventListener("click", startGame);
+    restartBtn.addEventListener("click", restartGame);
+
+    resetRun();
+    draw();
+  </script>
 </body>
 </html>
