@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Galaxy Arena Final Stable</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #060b14;
+      font-family: Arial, sans-serif;
+      color: #eef6ff;
+    }
+    body { touch-action: manipulation; }
+    #app {
+      position: relative;
+      width: 100vw;
+      height: 100dvh;
+      overflow: hidden;
+      background: #060b14;
+    }
+    #starfield, #game {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    #starfield { z-index: 1; }
+    #game { z-index: 2; }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding:
+        max(16px, env(safe-area-inset-top))
+        16px
+        max(16px, env(safe-area-inset-bottom))
+        16px;
+      background:
+        linear-gradient(180deg, rgba(4,8,16,0.97), rgba(4,8,16,0.98)),
+        radial-gradient(circle at 20% 20%, rgba(76, 0, 255, 0.18), transparent 22%),
+        radial-gradient(circle at 80% 15%, rgba(0, 204, 255, 0.16), transparent 20%),
+        radial-gradient(circle at 70% 75%, rgba(255, 0, 140, 0.10), transparent 26%);
+      overflow: auto;
+    }
+    .overlay.show { display: flex; }
+    #lbSetupOverlay { z-index: 40; display:none !important; }
+
+    .card {
+      width: min(94vw, 430px);
+      max-height: min(88dvh, 860px);
+      overflow: auto;
+      background: rgba(11, 18, 34, 0.96);
+      border: 1px solid rgba(255,255,255,0.10);
+      box-shadow: 0 14px 40px rgba(0,0,0,0.35);
+      border-radius: 20px;
+      padding: 22px;
+    }
+
+    h1, h2, h3, p { margin: 0 0 12px 0; }
+    h1 { font-size: 34px; }
+    h2 { font-size: 30px; }
+
+    .sub {
+      color: #aac0dc;
+      line-height: 1.45;
+      font-size: 14px;
+    }
+
+    input, button {
+      width: 100%;
+      border: none;
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-size: 17px;
+    }
+    input {
+      background: #f4f8ff;
+      color: #0f172a;
+      margin: 8px 0 12px 0;
+      outline: none;
+    }
+    button {
+      background: linear-gradient(180deg, #4ce7ff 0%, #18c0ff 100%);
+      color: #04111d;
+      font-weight: 700;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    button.secondary {
+      background: rgba(255,255,255,0.08);
+      color: #eef6ff;
+      border: 1px solid rgba(255,255,255,0.10);
+      box-shadow: none;
+    }
+    button + button { margin-top: 10px; }
+
+    #hudTop {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      top: calc(12px + env(safe-area-inset-top));
+      z-index: 8;
+      display: none;
+      gap: 8px;
+      flex-wrap: wrap;
+      pointer-events: none;
+    }
+    .hudBox {
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(10, 16, 30, 0.78);
+      border: 1px solid rgba(255,255,255,0.09);
+      min-width: 102px;
+      font-size: 16px;
+    }
+
+    #dock {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: calc(12px + env(safe-area-inset-bottom));
+      z-index: 8;
+      display: none;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+    .dockCard {
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(10, 16, 30, 0.86);
+      border: 1px solid rgba(255,255,255,0.09);
+      min-width: 130px;
+    }
+    .dockTitle {
+      font-size: 12px;
+      color: #9db4cf;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+    }
+    .dockValue {
+      font-size: 22px;
+      font-weight: 700;
+      color: #f6fcff;
+    }
+    .dockButtons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      pointer-events: auto;
+    }
+    .dockButtons button {
+      width: auto;
+      min-width: 100px;
+      padding: 12px 14px;
+      font-size: 15px;
+      margin: 0;
+    }
+
+    .sectionLabel {
+      margin-top: 16px;
+      margin-bottom: 8px;
+      font-size: 13px;
+      color: #aac0dc;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+    }
+    .shopGrid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .shopItem {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 10px;
+    }
+    .shopPreview {
+      width: 100%;
+      height: 42px;
+      border-radius: 10px;
+      margin-bottom: 8px;
+      border: 1px solid rgba(255,255,255,0.10);
+    }
+    .priceText {
+      font-size: 13px;
+      color: #aac0dc;
+      margin-bottom: 8px;
+    }
+    .shopItem button {
+      margin: 0;
+      padding: 10px 12px;
+      font-size: 14px;
+    }
+
+    .livesDots {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      min-height: 18px;
+      margin-top: 4px;
+    }
+    .lifeDot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #f6fbff;
+      box-shadow: 0 0 10px rgba(255,255,255,0.28);
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .lifeDot.off {
+      background: #090c12;
+      box-shadow: none;
+      border-color: rgba(255,255,255,0.10);
+    }
+
+    .leaderboardList {
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .leaderRow {
+      display: grid;
+      grid-template-columns: 40px 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      font-size: 15px;
+    }
+    .leaderRank { color: #9db4cf; font-weight: 700; }
+    .leaderName {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .leaderScore { font-weight: 700; }
+    .leaderNote {
+      margin-top: 12px;
+      font-size: 13px;
+      color: #aac0dc;
+      line-height: 1.4;
+    }
+
+    @media (max-width: 720px) {
+      .card {
+        width: min(96vw, 420px);
+        padding: 18px;
+      }
+      .shopGrid { grid-template-columns: 1fr; }
+      .hudBox {
+        min-width: 94px;
+        font-size: 14px;
+      }
+      .dockCard { min-width: 115px; }
+      .dockValue { font-size: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <canvas id="starfield" width="1280" height="720"></canvas>
+    <canvas id="game" width="1280" height="720"></canvas>
+
+    <div id="menuOverlay" class="overlay show">
+      <div class="card">
+        <h1>Galaxy Arena V22</h1>
+        <p class="sub">Dodge durch eine Neon-Galaxie, sammle Credits und dash mit Space durch enge Lücken.</p>
+        <input id="nameInput" type="text" maxlength="16" placeholder="Dein Name" />
+        <button id="startBtn">Spiel starten</button>
+        <button id="openShopFromMenu" class="secondary">Shop öffnen</button>
+        <button id="openLeaderboardFromMenu" class="secondary">Leaderboard</button>
+        
+      </div>
+    </div>
+
+    <div id="lbSetupOverlay" class="overlay" style="display:none !important;">
+      <div class="card">
+        <h2>Leaderboard aktivieren</h2>
+        <p class="sub">Nur einmal URL und Publishable Key eingeben.</p>
+        <input id="lbUrlInput" type="text" placeholder="Supabase URL" />
+        <input id="lbKeyInput" type="text" placeholder="Publishable Key" />
+        <button id="activateLbBtn">Aktivieren</button>
+        <button id="resetLbBtn" class="secondary">Zurücksetzen</button>
+        <button id="skipLbBtn" class="secondary">Schließen</button>
+      </div>
+    </div>
+
+    <div id="shopOverlay" class="overlay">
+      <div class="card">
+        <h2>Shop</h2><div style="margin-bottom:10px;">Coins: <b id="shopCoins">0</b></div>
+        <p class="sub">Kaufe Farben für dein Schiff und Hintergründe mit Credits.</p>
+        <div class="sectionLabel">Fähigkeiten</div><div id="abilityGrid" class="shopGrid"></div><div class="sectionLabel">Skins</div>
+        <div class="shopGrid" id="skinGrid"></div>
+        <div class="sectionLabel">Hintergründe</div>
+        <div class="shopGrid" id="bgGrid"></div>
+        <button id="closeShopBtn" class="secondary" style="margin-top:14px;">Schließen</button>
+      </div>
+    </div>
+
+    <div id="leaderboardOverlay" class="overlay">
+      <div class="card">
+        <h2>Leaderboard</h2>
+        <p class="sub">Leaderboard ist aktiv.</p>
+        <div id="leaderboardActiveNote" class="sub" style="margin-bottom:10px;">Pro Spieler wird nur der höchste Score angezeigt.</div>
+        <form id="leaderboardForm" style="display:none;">
+          <input id="lbInlineUrlInput" type="text" placeholder="Supabase URL" />
+          <input id="lbInlineKeyInput" type="text" placeholder="Publishable Key" />
+          <button id="saveInlineLbBtn" type="submit">Speichern</button>
+        </form>
+        <div style="height:8px;"></div>
+        <p class="sub">Top 20</p><p class="sub" style="font-size:12px;">Top 20 aus leaderboard.</p>
+        <div id="leaderboardList" class="leaderboardList"></div>
+        <div id="leaderboardNote" class="leaderNote"></div>
+        <button id="closeLeaderboardBtn" class="secondary" style="margin-top:14px;">Schließen</button>
+      </div>
+    </div>
+
+    <div id="gameOverOverlay" class="overlay">
+      <div class="card">
+        <h2>Game Over</h2>
+        <p class="sub" id="finalSummary">Score: 0 · Credits: 0</p>
+        <button id="restartBtn">Nochmal spielen</button>
+        <button id="backMenuBtn" class="secondary">Zurück zum Menü</button>
+      </div>
+    </div>
+
+    <div id="hudTop">
+      <div class="hudBox" id="hudName">Name: Player</div>
+      <div class="hudBox" id="hudScore">Score: 0</div>
+      <div class="hudBox" id="hudCoins">Credits: 0</div>
+      <div class="hudBox" id="hudLives">
+        <div>Leben</div>
+        <div class="livesDots" id="livesDots"></div>
+      </div>
+      <div class="hudBox" id="hudBest">Best: 0</div>
+    </div>
+
+    <div id="dock">
+      <div class="dockCard">
+        <div class="dockTitle">Dash</div>
+        <div class="dockValue" id="dashStatus">Ready</div>
+      </div>
+      <div class="dockCard" id="shieldCard" style="display:none;">
+        <div class="dockTitle">Shield · Q</div>
+        <div class="dockValue" id="shieldStatus">Ready</div>
+      </div>
+      <div class="dockCard" id="teleportCard" style="display:none;">
+        <div class="dockTitle">Teleport · E</div>
+        <div class="dockValue" id="teleportStatus">Ready</div>
+      </div>
+      <div class="dockCard" id="speedCard" style="display:none;">
+        <div class="dockTitle">Speed · Shift</div>
+        <div class="dockValue" id="speedStatus">Ready</div>
+      </div>
+      <div class="dockButtons">
+        <button id="shopBtn" class="secondary">Shop</button>
+        <button id="leaderboardBtn" class="secondary">Leaderboard</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SAVE_KEY = "galaxy_arena_save_v4";
+    const DEVICE_KEY = "galaxy_arena_device_id";
+    const GAME_ID = "galaxy_arena";
+    const SUPABASE_URL = "https://sddlcfibzeehruzhbrqx.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_Vwa85CK6aYkQaZt6Bn8aBQ_hjRein_O";
+
+    const GAME = {
+      w: 1280,
+      h: 720,
+      playerSpeed: 275,
+      playerRadius: 14,
+      enemyBaseSpeed: 132,
+      enemyExtraSpeed: 70,
+      enemyRadiusMin: 12,
+      enemyRadiusMax: 16,
+      dashSpeed: 860,
+      dashDuration: 0.14,
+      dashCooldown: 4.0,
+      enemySpawnSeconds: 1.6,
+      maxEnemies: 16,
+      coinSpawnSeconds: 1.6,
+      maxCoins: 10
+    };
+
+    const skins = [
+      { id: "cyan", name: "Cyan", color: "#31e8ff", price: 0 },
+      { id: "orange", name: "Orange", color: "#ff9f43", price: 10 },
+      { id: "green", name: "Green", color: "#63ff9d", price: 32 },
+      { id: "violet", name: "Violet", color: "#b77cff", price: 72 },
+      { id: "red", name: "Red", color: "#ff6287", price: 120 },
+      { id: "rainbow", name: "Rainbow", color: "#ffffff", price: 220 },
+      { id: "gold", name: "Gold", color: "#ffd700", price: 320 }
+    ];
+
+    const backgrounds = [
+      { id: "nebula", name: "Nebula", price: 0 },
+      { id: "purple", name: "Purple Rift", price: 64 },
+      { id: "sunset", name: "Solar Dust", price: 112 },
+      { id: "emerald", name: "Emerald Void", price: 176 }
+    ];
+
+    const blocks = [
+      { x: 160, y: 120, w: 220, h: 34 },
+      { x: 520, y: 100, w: 38, h: 180 },
+      { x: 800, y: 140, w: 200, h: 34 },
+      { x: 270, y: 310, w: 38, h: 220 },
+      { x: 420, y: 450, w: 280, h: 34 },
+      { x: 930, y: 320, w: 38, h: 180 }
+    ];
+
+    const starCanvas = document.getElementById("starfield");
+    const starCtx = starCanvas.getContext("2d");
+    const gameCanvas = document.getElementById("game");
+    const gameCtx = gameCanvas.getContext("2d");
+
+    const menuOverlay = document.getElementById("menuOverlay");
+    const lbSetupOverlay = document.getElementById("lbSetupOverlay");
+    const shopOverlay = document.getElementById("shopOverlay");
+    const leaderboardOverlay = document.getElementById("leaderboardOverlay");
+    const gameOverOverlay = document.getElementById("gameOverOverlay");
+
+    const startBtn = document.getElementById("startBtn");
+    const openShopFromMenu = document.getElementById("openShopFromMenu");
+    const openLeaderboardFromMenu = document.getElementById("openLeaderboardFromMenu");
+    const lbUrlInput = document.getElementById("lbUrlInput");
+    const lbKeyInput = document.getElementById("lbKeyInput");
+    const activateLbBtn = document.getElementById("activateLbBtn");
+    const resetLbBtn = document.getElementById("resetLbBtn");
+    const skipLbBtn = document.getElementById("skipLbBtn");
+    const closeShopBtn = document.getElementById("closeShopBtn");
+    const closeLeaderboardBtn = document.getElementById("closeLeaderboardBtn");
+    const shopBtn = document.getElementById("shopBtn");
+    const leaderboardBtn = document.getElementById("leaderboardBtn");
+    const restartBtn = document.getElementById("restartBtn");
+    const backMenuBtn = document.getElementById("backMenuBtn");
+    const nameInput = document.getElementById("nameInput");
+
+    const hudTop = document.getElementById("hudTop");
+    const dock = document.getElementById("dock");
+    const hudName = document.getElementById("hudName");
+    const hudScore = document.getElementById("hudScore");
+    const hudCoins = document.getElementById("hudCoins");
+    const hudBest = document.getElementById("hudBest");
+    const livesDots = document.getElementById("livesDots");
+    const dashStatus = document.getElementById("dashStatus");
+    const finalSummary = document.getElementById("finalSummary");
+    const leaderboardList = document.getElementById("leaderboardList");
+    const leaderboardNote = document.getElementById("leaderboardNote");
+    let lastLeaderboardError = "";
+    const lbInlineUrlInput = document.getElementById("lbInlineUrlInput");
+    const lbInlineKeyInput = document.getElementById("lbInlineKeyInput");
+    const saveInlineLbBtn = document.getElementById("saveInlineLbBtn");
+    const leaderboardActiveNote = document.getElementById("leaderboardActiveNote");
+
+    const skinGrid = document.getElementById("skinGrid");
+    const bgGrid = document.getElementById("bgGrid");
+
+    const keys = {};
+    const stars = createStars(150);
+    const deviceId = getDeviceId();
+
+    let save = loadSave();
+    let state = "menu";
+    let startedLoop = false;
+    let lastTime = 0;
+    let supabaseReady = false;
+
+    let player = createPlayer();
+    let score = 0;
+    let runCoins = 0;
+    let enemies = [];
+    let coins = [];
+    let particles = [];
+    let enemyTimer = 0;
+    let coinTimer = 0;
+    let screenFlash = 0;
+
+    nameInput.value = save.playerName || "";
+    buildShop();
+    updateHud();
+    drawStarfield();
+    drawGame();
+    initSupabaseFields();
+    initSupabaseFields();
+
+    function initSupabaseFields() {
+      if (typeof lbUrlInput !== "undefined" && lbUrlInput) lbUrlInput.value = SUPABASE_URL;
+      if (typeof lbKeyInput !== "undefined" && lbKeyInput) lbKeyInput.value = SUPABASE_KEY;
+      lbInlineUrlInput.value = SUPABASE_URL;
+      lbInlineKeyInput.value = SUPABASE_KEY;
+      if (leaderboardForm) leaderboardForm.style.display = "none";
+      if (leaderboardActiveNote) leaderboardActiveNote.style.display = "block";
+    }
+
+    function getClient() {
+      return {
+        base: SUPABASE_URL.replace(/\/+$/, "") + "/rest/v1",
+        key: SUPABASE_KEY
+      };
+    }
+
+    function activateLeaderboard() {
+      initSupabaseFields();
+      loadLeaderboard();
+    }
+
+    function resetLeaderboardSetup() {
+      initSupabaseFields();
+      loadLeaderboard();
+    }
+
+    function maybeShowLeaderboardSetup() {}
+
+    async function restRequest(path, options = {}) {
+      const client = getClient();
+      const res = await fetch(client.base + path, {
+        ...options,
+        headers: {
+          apikey: client.key,
+          Authorization: "Bearer " + client.key,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+          ...(options.headers || {})
+        }
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || ("HTTP " + res.status));
+      }
+      if (res.status === 204) return null;
+      const txt = await res.text();
+      return txt ? JSON.parse(txt) : null;
+    }
+
+    async function submitScore(finalScoreValue) {
+      try {
+        const playerNameValue = (save.playerName || "Player").slice(0, 16);
+        const queryName = encodeURIComponent(playerNameValue);
+        const existing = await restRequest(`/leaderboard?select=score&name=eq.${queryName}&order=score.desc&limit=1`, {
+          method: "GET",
+          headers: { Prefer: "" }
+        });
+        const currentBest = existing && existing.length ? Number(existing[0].score || 0) : 0;
+        if (finalScoreValue <= currentBest) return;
+
+        await restRequest('/leaderboard', {
+          method: 'POST',
+          body: JSON.stringify({ name: playerNameValue, score: finalScoreValue })
+        });
+      } catch (e) {
+        console.error("submitScore", e);
+      }
+    }
+
+    async function showLeaderboard(fromMenu) {
+      shopOverlay.classList.remove("show");
+      gameOverOverlay.classList.remove("show");
+      leaderboardOverlay.classList.add("show");
+      if (leaderboardForm) leaderboardForm.style.display = "none";
+      if (leaderboardActiveNote) leaderboardActiveNote.style.display = "block";
+      await loadLeaderboard();
+      if (!fromMenu && state === "play") state = "pause";
+    }
+
+    function hideLeaderboard() {
+      leaderboardOverlay.classList.remove("show");
+      if (menuOverlay.classList.contains("show")) return;
+      if (state === "pause") state = "play";
+    }
+
+    async function loadLeaderboard() {
+      leaderboardList.innerHTML = '<div class="leaderRow"><div class="leaderRank">…</div><div class="leaderName">Lädt...</div><div class="leaderScore">-</div></div>';
+      leaderboardNote.textContent = "";
+      try {
+        const data = await restRequest('/leaderboard?select=name,score&order=score.desc&limit=200', {
+          method: 'GET',
+          headers: { Prefer: "" }
+        });
+
+        const bestByName = new Map();
+        for (const row of (data || [])) {
+          const rowName = String(row.name || "Player").slice(0, 16);
+          const rowScore = Number(row.score || 0);
+          if (!bestByName.has(rowName) || rowScore > bestByName.get(rowName).score) {
+            bestByName.set(rowName, { name: rowName, score: rowScore });
+          }
+        }
+
+        const uniqueRows = [...bestByName.values()].sort((a, b) => b.score - a.score).slice(0, 20);
+
+        if (!uniqueRows.length) {
+          leaderboardList.innerHTML = '<div class="leaderRow"><div class="leaderRank">-</div><div class="leaderName">Noch keine Scores</div><div class="leaderScore">0</div></div>';
+          leaderboardNote.textContent = "Top 20 aus leaderboard.";
+          return;
+        }
+
+        leaderboardList.innerHTML = "";
+        uniqueRows.forEach((row, index) => {
+          const div = document.createElement("div");
+          div.className = "leaderRow";
+          const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : "#" + (index + 1);
+          div.innerHTML = `
+            <div class="leaderRank">${medal}</div>
+            <div class="leaderName">${escapeHtml((row.name || "Player"))}</div>
+            <div class="leaderScore">${row.score ?? 0}</div>
+          `;
+          leaderboardList.appendChild(div);
+        });
+
+        leaderboardNote.textContent = "Pro Spieler wird nur der höchste Score gezeigt.";
+      } catch (e) {
+        leaderboardList.innerHTML = '<div class="leaderRow"><div class="leaderRank">!</div><div class="leaderName">Fehler beim Laden</div><div class="leaderScore">-</div></div>';
+        leaderboardNote.textContent = "Fehler: " + (e?.message || e);
+        console.error("loadLeaderboard", e);
+      }
+    }
+
+    function escapeHtml(text) {
+      return text
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;");
+    }
+
+    function loop(ts) {
+      const dt = Math.min(((ts - lastTime) / 1000) || 0, 0.033);
+      lastTime = ts;
+      update(dt);
+      drawGame();
+      requestAnimationFrame(loop);
+    }
+
+    document.addEventListener("keydown", (e) => {
+      const tag = document.activeElement ? document.activeElement.tagName : "";
+      if (tag === "INPUT" && e.code !== "Enter") return;
+
+      if (e.code === "Enter" && state === "menu") {
+        startGame();
+        return;
+      }
+      if (e.code === "Space") {
+        e.preventDefault();
+        tryDash();
+        return;
+      }
+      if (e.code === "KeyP") {
+        if (state === "play") state = "pause";
+        else if (state === "pause") state = "play";
+        return;
+      }
+      if (e.code === "KeyR" && state !== "menu") {
+        resetRun();
+        gameOverOverlay.classList.remove("show");
+        leaderboardOverlay.classList.remove("show");
+        state = "play";
+        return;
+      }
+      keys[e.key] = true;
+    });
+
+    document.addEventListener("keyup", (e) => {
+      keys[e.key] = false;
+    });
+
+    startBtn.addEventListener("click", startGame);
+    openShopFromMenu.addEventListener("click", () => showShop(true));
+    openLeaderboardFromMenu.addEventListener("click", () => showLeaderboard(true));
+    shopBtn.addEventListener("click", () => showShop(false));
+    leaderboardBtn.addEventListener("click", () => showLeaderboard(false));
+    closeShopBtn.addEventListener("click", hideShop);
+    closeLeaderboardBtn.addEventListener("click", hideLeaderboard);
+    activateLbBtn.addEventListener("click", () => activateLeaderboard());
+    resetLbBtn.addEventListener("click", resetLeaderboardSetup);
+    skipLbBtn.addEventListener("click", () => {
+      lbSetupOverlay.classList.remove("show");
+    });
+
+    restartBtn.addEventListener("click", () => {
+      resetRun();
+      gameOverOverlay.classList.remove("show");
+      state = "play";
+    });
+
+    backMenuBtn.addEventListener("click", () => {
+      showMenu();
+      drawStarfield();
+      drawGame();
+    });
+  
+
+// --- ABILITIES V25 ---
+const abilityGrid = document.getElementById("abilityGrid");
+const shopCoins = document.getElementById("shopCoins");
+const shieldCard = document.getElementById("shieldCard");
+const teleportCard = document.getElementById("teleportCard");
+const speedCard = document.getElementById("speedCard");
+const shieldStatus = document.getElementById("shieldStatus");
+const teleportStatus = document.getElementById("teleportStatus");
+const speedStatus = document.getElementById("speedStatus");
+
+save.ownedAbilities = save.ownedAbilities || {
+  shield: false,
+  teleport: false,
+  speed: false
+};
+
+let abilityState = {
+  shieldCooldown: 0,
+  shieldActive: 0,
+  teleportCooldown: 0,
+  speedCooldown: 0,
+  speedActive: 0
+};
+
+function abilityText(seconds){
+  return seconds > 0 ? seconds.toFixed(1) + "s" : "Ready";
+}
+
+function updateAbilityUI(){
+  if(shopCoins) shopCoins.textContent = save.totalCoins;
+
+  if (shieldCard) shieldCard.style.display = save.ownedAbilities.shield ? "" : "none";
+  if (teleportCard) teleportCard.style.display = save.ownedAbilities.teleport ? "" : "none";
+  if (speedCard) speedCard.style.display = save.ownedAbilities.speed ? "" : "none";
+
+  if (shieldStatus) shieldStatus.textContent = abilityState.shieldActive > 0 ? "Active" : abilityText(abilityState.shieldCooldown);
+  if (teleportStatus) teleportStatus.textContent = abilityText(abilityState.teleportCooldown);
+  if (speedStatus) speedStatus.textContent = abilityState.speedActive > 0 ? "Active" : abilityText(abilityState.speedCooldown);
+}
+
+function buildAbilities(){
+  if(!abilityGrid) return;
+  abilityGrid.innerHTML="";
+  const list = [
+    {id:"shield",name:"Shield",price:50,note:"Q · 3s aktiv · 18s Cooldown"},
+    {id:"teleport",name:"Teleport",price:70,note:"E · 10s Cooldown"},
+    {id:"speed",name:"Speed",price:40,note:"Shift · 3s aktiv · 14s Cooldown"}
+  ];
+  list.forEach(a=>{
+    const d=document.createElement("div");
+    d.className="shopItem";
+    d.innerHTML=`<div><strong>${a.name}</strong></div><div class="priceText">${a.note}</div>`;
+    const b=document.createElement("button");
+    b.className="secondary";
+    b.textContent=save.ownedAbilities[a.id]?"Gekauft":a.price+" C";
+    b.disabled=!!save.ownedAbilities[a.id];
+    b.onclick=()=>{
+      if(save.ownedAbilities[a.id]) return;
+      if(save.totalCoins>=a.price){
+        save.totalCoins-=a.price;
+        save.ownedAbilities[a.id]=true;
+        saveGame();
+        buildAbilities();
+        updateHud();
+        updateAbilityUI();
+      }
+    };
+    d.appendChild(b);
+    abilityGrid.appendChild(d);
+  });
+}
+
+document.addEventListener("keydown",(e)=>{
+  if (state !== "play") return;
+
+  if(e.code==="KeyQ" && save.ownedAbilities.shield && abilityState.shieldCooldown<=0){
+    player.invuln = Math.max(player.invuln, 3.05);
+    abilityState.shieldActive = 3.0;
+    abilityState.shieldCooldown = 18.0;
+    updateAbilityUI();
+  }
+
+  if(e.code==="KeyE" && save.ownedAbilities.teleport && abilityState.teleportCooldown<=0){
+    const pos = randomFreeCircle(player.r + 8);
+    player.x = pos.x;
+    player.y = pos.y;
+    abilityState.teleportCooldown = 10.0;
+    for (let i = 0; i < 12; i++) {
+      particles.push(makeParticle(player.x, player.y, "#b48cff", 220));
+    }
+    updateAbilityUI();
+  }
+
+  if((e.code==="ShiftLeft"||e.code==="ShiftRight") && save.ownedAbilities.speed && abilityState.speedCooldown<=0){
+    abilityState.speedActive = 3.0;
+    abilityState.speedCooldown = 14.0;
+    updateAbilityUI();
+  }
+}, true);
+
+const oldUpdate = update;
+update = function(dt){
+  oldUpdate(dt);
+
+  if (abilityState.shieldCooldown > 0) abilityState.shieldCooldown = Math.max(0, abilityState.shieldCooldown - dt);
+  if (abilityState.shieldActive > 0) abilityState.shieldActive = Math.max(0, abilityState.shieldActive - dt);
+  if (abilityState.teleportCooldown > 0) abilityState.teleportCooldown = Math.max(0, abilityState.teleportCooldown - dt);
+  if (abilityState.speedCooldown > 0) abilityState.speedCooldown = Math.max(0, abilityState.speedCooldown - dt);
+  if (abilityState.speedActive > 0) abilityState.speedActive = Math.max(0, abilityState.speedActive - dt);
+
+  updateAbilityUI();
+};
+
+const oldMovePlayerAxis = movePlayerAxis;
+movePlayerAxis = function(dx, dy){
+  const boost = abilityState.speedActive > 0 ? 1.6 : 1;
+  oldMovePlayerAxis(dx * boost, dy * boost);
+};
+
+const oldDrawPlayer = drawPlayer;
+drawPlayer = function(){
+  if (abilityState.shieldActive > 0) {
+    gameCtx.beginPath();
+    gameCtx.fillStyle = "rgba(90,220,255,0.20)";
+    gameCtx.arc(player.x, player.y, player.r + 13, 0, Math.PI * 2);
+    gameCtx.fill();
+  }
+  oldDrawPlayer();
+};
+
+const oldResetRun = resetRun;
+resetRun = function(){
+  oldResetRun();
+  abilityState.shieldCooldown = 0;
+  abilityState.shieldActive = 0;
+  abilityState.teleportCooldown = 0;
+  abilityState.speedCooldown = 0;
+  abilityState.speedActive = 0;
+  updateAbilityUI();
+};
+
+const oldBuildShop = buildShop;
+buildShop = function(){
+  oldBuildShop();
+  buildAbilities();
+  updateAbilityUI();
+};
+
+buildAbilities();
+updateAbilityUI();
+</script>
+</body>
+</html>
